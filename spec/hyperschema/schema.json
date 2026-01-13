@@ -389,6 +389,135 @@
           "version": 1
         }
       ]
+    },
+    {
+      "name": "block-2",
+      "namespace": "bee",
+      "compact": false,
+      "flagsPosition": 3,
+      "fields": [
+        {
+          "name": "type",
+          "required": true,
+          "type": "uint",
+          "version": 1
+        },
+        {
+          "name": "checkpoint",
+          "required": true,
+          "type": "uint",
+          "version": 1
+        },
+        {
+          "name": "batch",
+          "required": true,
+          "type": "@bee/batch-pointer",
+          "version": 1
+        },
+        {
+          "name": "previous",
+          "type": "@bee/block-pointer",
+          "version": 1
+        },
+        {
+          "name": "metadata",
+          "type": "@bee/metadata",
+          "version": 1
+        },
+        {
+          "name": "tree",
+          "array": true,
+          "type": "@bee/tree2",
+          "version": 1
+        },
+        {
+          "name": "keys",
+          "array": true,
+          "type": "@bee/key",
+          "version": 1
+        },
+        {
+          "name": "values",
+          "array": true,
+          "type": "buffer",
+          "version": 1
+        },
+        {
+          "name": "cohorts",
+          "array": true,
+          "type": "@bee/cohort",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "name": "tree2",
+      "namespace": "bee",
+      "compact": true,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "keys",
+          "required": true,
+          "array": true,
+          "type": "@bee/tree-delta2",
+          "version": 1
+        },
+        {
+          "name": "children",
+          "required": true,
+          "array": true,
+          "type": "@bee/tree-delta2",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "name": "tree-delta2",
+      "namespace": "bee",
+      "compact": true,
+      "flagsPosition": 0,
+      "fields": [
+        {
+          "name": "type",
+          "type": "uint3",
+          "version": 1
+        },
+        {
+          "name": "index",
+          "type": "uint8",
+          "version": 1
+        },
+        {
+          "name": "pointer",
+          "inline": true,
+          "type": "@bee/tree-pointer2",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "name": "tree-pointer2",
+      "namespace": "bee",
+      "compact": true,
+      "flagsPosition": 0,
+      "fields": [
+        {
+          "name": "core",
+          "type": "uint",
+          "version": 1
+        },
+        {
+          "name": "seq",
+          "type": "int",
+          "version": 1
+        },
+        {
+          "name": "offset",
+          "type": "uint",
+          "version": 1
+        }
+      ]
     }
   ]
 }
