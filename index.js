@@ -173,19 +173,24 @@ class Hyperbee {
 
     const tree = block.tree[ptr.offset]
 
+    // Arrays of raw DeltaOps (bare {type, index, pointer} objects)
+    // applying to this TreeNode.
     const keys = new Array(tree.keys.length)
     const children = new Array(tree.children.length)
 
+    // Inflate TreeNode's keys
     for (let i = 0; i < keys.length; i++) {
       const d = tree.keys[i]
       keys[i] = inflateKey(context, d, ptr, block, activeRequests)
     }
 
+    // Inflate TreeNode's children
     for (let i = 0; i < children.length; i++) {
       const d = tree.children[i]
       children[i] = inflateChild(context, d, ptr, block, activeRequests)
     }
 
+    // Create TreeNode instance
     const value = new TreeNode(await Promise.all(keys), await Promise.all(children))
     if (!ptr.value) ptr.value = value
 
@@ -304,16 +309,28 @@ module.exports = Hyperbee
 
 function noop() {}
 
-function inflateKey(context, d, ptr, block, activeRequests) {
+// Inflates DeltaOp or DeltaCohort from an entry in TreeNode's keys
+function inflateKey(
+  context,
+  d,
+  ptr, // Pointer to TreeNode's block
+  block, // TreeNode's block
+  activeRequests
+) {
   if (d.type === OP_COHORT) return inflateKeyCohort(context, d, ptr, block, activeRequests)
   return inflateKeyDelta(context, d, ptr, block, activeRequests)
 }
 
+// Inflates DeltaOp from an entry in TreeNode's keys
 async function inflateKeyDelta(context, d, ptr, block, activeRequests) {
+  // raw KeyPointer to DeltaOp's key
   const k = d.pointer
 
+  // DeltaOP has no key pointer to read (e.g. OP_DEL)
   if (!k) return new DeltaOp(false, d.type, d.index, null)
 
+  // Does the key exist in the DeltaOp's block?
+  // If not, load the key's block.
   const blk =
     k.seq === ptr.seq && k.core === 0 && ptr.core === 0
       ? block
@@ -321,6 +338,7 @@ async function inflateKeyDelta(context, d, ptr, block, activeRequests) {
 
   const bk = blk.keys[k.offset]
 
+  // Possible ValuePointer instance
   let vp = null
 
   if (bk.valuePointer) {
@@ -333,9 +351,13 @@ async function inflateKeyDelta(context, d, ptr, block, activeRequests) {
   return new DeltaOp(false, d.type, d.index, kp)
 }
 
+// Inflates DeltaCohort from an entry in TreeNode's keys
 async function inflateKeyCohort(context, d, ptr, block, activeRequests) {
+  // raw Pointer to DeltaCohort's block
   const co = d.pointer
 
+  // Does the DeltaCohort point to a block other than the one just read?
+  // If so, load the cohort's block.
   const blk =
     co.seq === ptr.seq && co.core === 0 && ptr.core === 0
       ? block
@@ -344,6 +366,7 @@ async function inflateKeyCohort(context, d, ptr, block, activeRequests) {
   const cohort = blk.cohorts[co.offset]
   const promises = new Array(cohort.length)
 
+  // Inflate each DeltaOp in the cohort
   for (let i = 0; i < cohort.length; i++) {
     const p = cohort[i]
     const k = inflateKeyDelta(context, p, co, blk, activeRequests)
