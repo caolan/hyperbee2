@@ -31,7 +31,9 @@ class Hyperbee extends EventEmitter {
       writable = true,
       unbatch = 0,
       autoUpdate = false,
-      preload = null
+      preload = null,
+      map = null,
+      reduce = null
     } = options
 
     this.store = store
