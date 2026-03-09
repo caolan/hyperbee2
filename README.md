@@ -27,7 +27,7 @@ Apache-2.0
 
 ### Hyperbee
 
-#### const db = new Hyperbee(store, [options])
+#### `const db = new Hyperbee(store, [options])`
 
 Make a new Hyperbee2 instance. The `store` argument expects a
 [Corestore][corestore].
@@ -48,7 +48,7 @@ Options include:
 }
 ```
 
-#### await db.ready()
+#### `await db.ready()`
 
 Ensures the underlying [Hypercore][hypercore] is ready and prepares the Hyperbee
 for use. If `autoUpdate` was set to true in the constructor's options,
@@ -56,12 +56,12 @@ this will start watching the [Hypercore][hypercore] for new writes.
 
 Calling `get()` or `write()` will call this automatically for you.
 
-#### await db.close()
+#### `await db.close()`
 
 Fully close the Hyperbee. If it is not a view on another Hyperbee,
 this will also close it's [Hypercore][hypercore].
 
-#### db.head()
+#### `db.head()`
 
 Returns an object with the following properties:
 
@@ -74,37 +74,37 @@ Returns an object with the following properties:
 
 If the Hyperbee is not ready, this will return null.
 
-#### db.cache
+#### `db.cache`
 
 Read only. The NodeCache used by this Hyperbee.
 
-#### db.core
+#### `db.core`
 
 Read only. The [Hypercore][hypercore] used by this Hyperbee.
 
-#### db.opening
+#### `db.opening`
 
 Read only. A Promise that resolves to `undefined` once the [Corestore][corestore]
 is ready.
 
-#### db.closing
+#### `db.closing`
 
 Read only. Initially null. When `db.close()` is called, this is set to
 a Promise that resolves to `undefined` when the close completes.
 
-#### db.opened
+#### `db.opened`
 
 Read only. Boolean indicating whether the [Corestore][corestore] has opened.
 
-#### db.closed
+#### `db.closed`
 
 Read only. Boolean indicating whether the [Corestore][corestore] has closed.
 
-#### db.replicate()
+#### `db.replicate()`
 
 Calls `replicate` on underlying [Corestore][corestore].
 
-#### db.checkout([options])
+#### `db.checkout([options])`
 
 Returns a new Hyperbee as a view on the underlying [Hypercore][hypercore].
 
@@ -118,7 +118,7 @@ Options:
 }
 ```
 
-#### db.move([options])
+#### `db.move([options])`
 
 Replaces the root of the tree with a new entry, potentially using a new
 [Hypercore][hypercore].
@@ -133,16 +133,16 @@ Options:
 }
 ```
 
-#### db.snapshot()
+#### `db.snapshot()`
 
 Returns a new Hyperbee that is a read only view of the current tree.
 
-#### db.undo(n)
+#### `db.undo(n)`
 
 Returns a new Hyperbee that is a writable view of the current tree,
 with the last `n` write batches ignored.
 
-#### db.write([options])
+#### `db.write([options])`
 
 Returns a [WriteBatch](#writebatch) object through which the tree can be updated.
 
@@ -172,7 +172,7 @@ Errors:
 
 - If the tree is not writable this will throw an Error
 
-#### db.createReadStream([options])
+#### `db.createReadStream([options])`
 
 Returns a [streamx][streamx] Readable Stream. This is async iterable.
 
@@ -212,7 +212,7 @@ for await (const data of b.createReadStream()) {
 }
 ```
 
-#### db.createDiffStream(right, [options])
+#### `db.createDiffStream(right, [options])`
 
 Returns a [streamx][streamx] Readable Stream that provides
 synchronized iteration over two trees. This is async iterable.
@@ -268,7 +268,7 @@ C C
 undefined E
 ```
 
-#### db.createChangesStream([options])
+#### `db.createChangesStream([options])`
 
 Returns a [streamx][streamx] Readable Stream for iterating over all
 batches previously written to the tree. This is async iterable.
@@ -309,7 +309,7 @@ Iterating over the stream will yield:
 }
 ```
 
-#### await db.peek([range])
+#### `await db.peek([range])`
 
 Attempts to get the first entry within the given range.
 
@@ -329,7 +329,7 @@ the following properties on success:
 The `range` argument accepts the same properties as the options for
 [`createReadStream()`](#dbcreatereadstreamoptions).
 
-#### await db.download([range])
+#### `await db.download([range])`
 
 Fetches all entries in the given range. The promise resolves once
 all matching entries have been fetched.
@@ -337,7 +337,7 @@ all matching entries have been fetched.
 The `range` argument accepts the same properties as the options for
 [`createReadStream()`](#dbcreatereadstreamoptions).
 
-#### await db.get(key, [options])
+#### `await db.get(key, [options])`
 
 Attempt to find an entry by its key.
 
@@ -407,21 +407,21 @@ for await (const data of b.createReadStream(b)) {
 // name --> Sneezy
 ```
 
-#### tryPut(key, value)
+#### `tryPut(key, value)`
 
 Queues an operation to associate `key` with `value`. Any existing entry
 for `key` will be overwritten.
 
-#### tryDelete(key)
+#### `tryDelete(key)`
 
 Queues an operation to remove the entry with `key`, if it exists. If it
 does not exist, this method does nothing (and will not throw).
 
-#### tryClear()
+#### `tryClear()`
 
 Queues an operation to clear all entries from the tree.
 
-#### async flush()
+#### `async flush()`
 
 Aquires an exclusive write lock and applies the operations queued in this
 batch to the tree, clearing the queue.
@@ -461,7 +461,7 @@ for await (const data of b.createReadStream(b)) {
 // name --> Sneezy
 ```
 
-#### close()
+#### `close()`
 
 Closes the batch without flushing operations. Subsequent attempts
 to flush the batch will result in an error.
