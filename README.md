@@ -407,21 +407,21 @@ for await (const data of b.createReadStream(b)) {
 // name --> Sneezy
 ```
 
-#### `tryPut(key, value)`
+#### `batch.tryPut(key, value)`
 
 Queues an operation to associate `key` with `value`. Any existing entry
 for `key` will be overwritten.
 
-#### `tryDelete(key)`
+#### `batch.tryDelete(key)`
 
 Queues an operation to remove the entry with `key`, if it exists. If it
 does not exist, this method does nothing (and will not throw).
 
-#### `tryClear()`
+#### `batch.tryClear()`
 
 Queues an operation to clear all entries from the tree.
 
-#### `async flush()`
+#### `await batch.flush()`
 
 Aquires an exclusive write lock and applies the operations queued in this
 batch to the tree, clearing the queue.
@@ -461,7 +461,7 @@ for await (const data of b.createReadStream(b)) {
 // name --> Sneezy
 ```
 
-#### `close()`
+#### `batch.close()`
 
 Closes the batch without flushing operations. Subsequent attempts
 to flush the batch will result in an error.
