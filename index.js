@@ -109,10 +109,15 @@ class Hyperbee extends EventEmitter {
 
   move({ length = this.core.length, key = null, writable = this.writable } = {}) {
     const context = key ? this.context.getContextByKey(key) : this.context
-    const root = length === 0 ? EMPTY : context.createTreeNode(0, length - 1, 0, false, null)
+    // If already pointing to desired position and writable state, return
+    // without emitting an update event and potentially re-creating the
+    // root object.
+    if (context === this.context && length === this.core.length && writable === this.writable) {
+      return
+    }
     this.context = context
     this.writable = writable
-    this.root = root
+    this.root = length === 0 ? EMPTY : context.createTreeNode(0, length - 1, 0, false, null)
     this.emit('update')
   }
 

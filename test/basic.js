@@ -718,3 +718,22 @@ test('emit update when move changes key but not length', async function (t) {
   t.alike((await db2.get(b4a.from('hello')))?.value, b4a.from('world'))
   t.alike(counter, 2)
 })
+
+test('move to current head() does not emit update event', async function (t) {
+  let counter = 0
+  const db = await create(t)
+  db.on('update', () => counter++)
+
+  await db.ready()
+  t.alike(counter, 0)
+
+  {
+    const w = db.write()
+    w.tryPut(b4a.from('hello'), b4a.from('world'))
+    await w.flush()
+  }
+  t.alike(counter, 1)
+
+  db.move(db.head())
+  t.alike(counter, 1)
+})
