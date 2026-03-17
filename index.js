@@ -337,6 +337,49 @@ class Hyperbee extends EventEmitter {
       ptr = v.children.get(i)
     }
   }
+
+  // Using this as an example of map/reduce
+  async count(opts) {
+    const config = this.config.options(opts)
+    const ptr = await this.bootstrap(config)
+    if (!ptr) return null
+    const c = await this._count(ptr, config)
+    return c
+  }
+
+  // TODO: avoid recursion?
+  async _count(ptr, config) {
+    const reduce = (values, _rereduce) => {
+      let count = 0
+      for (const v of values) count += v
+      return count
+    }
+    const map = (_row) => 1
+
+    const v = ptr.value ? this.bump(ptr) : await this.inflate(ptr, config)
+
+    // already calculated?
+    if (v.count !== undefined) return v.count
+
+    const current = []
+    const subtrees = []
+    for (let i = 0, len = v.keys.length; i < len; i++) {
+      const k = v.keys.get(i)
+      // TODO: valuePointer?
+      current.push(map(k.value))
+    }
+    for (let i = 0, len = v.children.length; i < len; i++) {
+      const c = v.children.get(i)
+      subtrees.push(await this._count(c, config))
+    }
+    if (current.length) {
+      subtrees.push(reduce(current, false))
+    }
+
+    // store result for future recalculations
+    v.count = reduce(subtrees, true)
+    return v.count
+  }
 }
 
 module.exports = Hyperbee
