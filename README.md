@@ -28,12 +28,12 @@ batch.tryPut(Buffer.from('email'), Buffer.from('example@example.com'))
 await batch.flush()
 
 // Read values from tree
-const name = await tree.get(Buffer.from('name'));
-const email = await tree.get(Buffer.from('email'));
+const name = await tree.get(Buffer.from('name'))
+const email = await tree.get(Buffer.from('email'))
 
-// Print values 
-console.log(name.value.toString());   // example
-console.log(email.value.toString());  // example@example.com
+// Print values
+console.log(name.value.toString()) // example
+console.log(email.value.toString()) // example@example.com
 ```
 
 ## License
@@ -380,29 +380,28 @@ Options:
 }
 ```
 
-
 #### `b.on('ready', listener)`
 
-Emitted once the tree's `ready()` method completes.
+Emitted once the Hyperbee is ready for use.
 
 ##### `b.on('update', listener)`
 
 Emitted in the following scenarios:
 
-* When a `WriteBatch` is flushed and its `autoUpdate` option is `true`
+- When a `WriteBatch` is flushed and its `autoUpdate` option is `true`
   (the default).
-* When the underlying core is appended to (locally or remotely) and the
+- When the underlying core is appended to (locally or remotely) and the
   `Hyperbee`'s `autoUpdate` option is `true`.
-* After a `move()` call on the `Hyperbee`.
-* After a rollback completes because the `unbatch` option to the
+- After a `move()` call on the `Hyperbee`.
+- After a rollback completes because the `unbatch` option to the
   `Hyperbee` constructor was greater than `0`.
 
 Warning: this event may be emitted multiple times for the same
 update if `autoUpdate` is set on the `Hyperbee` and on `WriteBatch`:
 
 ```js
-const b = new Hyperbee(store, {autoUpdate: true})
-b.on('update', () => console.log('New update'));
+const b = new Hyperbee(store, { autoUpdate: true })
+b.on('update', () => console.log('New update'))
 
 const w = b.write(/* autoUpdate is true by default */)
 w.tryPut(Buffer.from('key'), Buffer.from('value'))
