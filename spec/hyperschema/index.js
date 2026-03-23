@@ -257,18 +257,28 @@ const encoding8 = {
   preencode(state, m) {
     encoding8_0.preencode(state, m.keys)
     encoding8_1.preencode(state, m.children)
+    state.end++ // flags are fixed size
+
+    if (m.count) c.uint.preencode(state, m.count)
   },
   encode(state, m) {
+    const flags = m.count ? 1 : 0
+
     encoding8_0.encode(state, m.keys)
     encoding8_1.encode(state, m.children)
+    c.uint8.encode(state, flags)
+
+    if (m.count) c.uint.encode(state, m.count)
   },
   decode(state) {
     const r0 = encoding8_0.decode(state)
     const r1 = encoding8_1.decode(state)
+    const flags = c.uint8.decode(state)
 
     return {
       keys: r0,
-      children: r1
+      children: r1,
+      count: (flags & 1) !== 0 ? c.uint.decode(state) : 0
     }
   }
 }
