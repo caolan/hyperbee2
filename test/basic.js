@@ -167,6 +167,25 @@ test('basic encrypted', async function (t) {
   }
 })
 
+test('basic get encrypted', async function (t) {
+  const db = await create(t, {
+    getEncryptionProvider: () => ({
+      key: b4a.alloc(32, 'enc')
+    })
+  })
+
+  {
+    const w = db.write()
+    w.tryPut(b4a.from('PLAINTEXT'), b4a.from('PLAINTEXT'))
+    await w.flush()
+  }
+
+  for (let i = 0; i < db.core.length; i++) {
+    const blk = await db.core.get(i, { raw: true })
+    t.ok(b4a.toString(blk).indexOf('PLAINTEXT') === -1)
+  }
+})
+
 test('big overwrite', async function (t) {
   const db = await create(t)
 
@@ -351,6 +370,24 @@ test('basic auto-update', async function (t) {
   t.alike(await db3.get(b4a.from('1')), null)
 })
 
+test.solo('autoUpdate defaults are correct', async function (t) {
+  const db = await create(t, { writable: true })
+  await db.ready()
+  t.is(db.autoUpdate, false)
+
+  const db2 = await create(t, { key: db.core.key, writable: true })
+  t.is(db2.autoUpdate, false)
+
+  const db3 = await create(t, { key: db.core.key, writable: false })
+  t.is(db3.autoUpdate, true)
+
+  // views
+  const snap = db3.snapshot()
+  t.is(snap.autoUpdate, false)
+
+  await snap.close()
+})
+
 test('basic cross link (encrypted)', async function (t) {
   const db = await create(t, { encryption: { key: b4a.alloc(32) } })
 
@@ -362,6 +399,30 @@ test('basic cross link (encrypted)', async function (t) {
   }
 
   const db2 = await create(t, { encryption: { key: b4a.alloc(32) } })
+
+  replicate(t, db, db2)
+
+  {
+    const w = db2.write(db.head())
+    w.tryPut(b4a.from('hej'), b4a.from('verden*'))
+    await w.flush()
+  }
+
+  t.alike((await db2.get(b4a.from('hej')))?.value, b4a.from('verden*'))
+  t.alike((await db2.get(b4a.from('hello')))?.value, b4a.from('world'))
+})
+
+test('basic cross link (encryption+getEncryption)', async function (t) {
+  const db = await create(t, { encryption: { key: b4a.alloc(32) } })
+
+  {
+    const w = db.write()
+    w.tryPut(b4a.from('hello'), b4a.from('world'))
+    w.tryPut(b4a.from('hej'), b4a.from('verden'))
+    await w.flush()
+  }
+
+  const db2 = await create(t, { getEncryptionProvider: () => ({ key: b4a.alloc(32) }) })
 
   replicate(t, db, db2)
 
@@ -736,4 +797,36 @@ test('move to current head() does not emit update event', async function (t) {
 
   db.move(db.head())
   t.alike(counter, 1)
+})
+
+test('RangeIterator.prefetchNext with upper bound', async function (t) {
+  const db = await create(t)
+
+  function encodeUint32(n) {
+    const buf = new ArrayBuffer(4)
+    const view = new DataView(buf)
+    view.setUint32(0, n, false)
+    return b4a.from(buf)
+  }
+
+  const ENTRIES = 256
+
+  const w = db.write()
+  for (let i = 0; i < ENTRIES; i++) {
+    w.tryPut(encodeUint32(i), encodeUint32(i))
+  }
+  await w.flush()
+
+  const opt = {
+    prefetch: true,
+    lt: encodeUint32(ENTRIES),
+    // Needs a limit > minKeys to avoid early exit in prefetchNext
+    // (separate bug that can hide this one)
+    limit: ENTRIES * 2
+  }
+  let count = 0
+  for await (const _ of db.createReadStream(opt)) {
+    count++
+  }
+  t.alike(count, ENTRIES)
 })
