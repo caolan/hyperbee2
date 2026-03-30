@@ -335,7 +335,7 @@ class Hyperbee extends EventEmitter {
 
         c = b4a.compare(key, m.key)
 
-        if (c === 0) return this.finalizeKeyPointer(m, config)
+        if (c === 0) return await this.finalizeKeyPointer(m, config)
 
         if (c < 0) e = mid
         else s = mid + 1
