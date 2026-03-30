@@ -40,7 +40,7 @@ class Hyperbee extends EventEmitter {
       view = false,
       writable = true,
       unbatch = 0,
-      autoUpdate = false,
+      autoUpdate = !writable && !view,
       preload = null
     } = opts
 
