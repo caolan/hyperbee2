@@ -12,27 +12,37 @@ const { inflate, inflateValue } = require('./lib/inflate.js')
 const { EMPTY } = require('./lib/tree.js')
 
 class Hyperbee extends EventEmitter {
-  constructor(store, options = {}) {
+  constructor(store, opts = {}) {
     super()
 
     const {
       t = 128, // legacy number for now, should be 128 now
       key = null,
       encryption = null,
+      getEncryptionProvider = toEncryptionProvider(encryption),
       maxCacheSize = 4096,
       config = new SessionConfig([], 0, true),
       activeRequests = config.activeRequests,
       timeout = config.timeout,
       wait = config.wait,
-      core = key ? store.get(key) : store.get({ key, name: 'bee', encryption }),
-      context = new CoreContext(store, core, new NodeCache(maxCacheSize), core, encryption, t),
+      core = key
+        ? store.get({ key, encryption: getEncryptionProvider(key) })
+        : store.get({ key, name: 'bee', encryption: getEncryptionProvider(key) }),
+      context = new CoreContext(
+        store,
+        core,
+        new NodeCache(maxCacheSize),
+        core,
+        getEncryptionProvider,
+        t
+      ),
       root = null,
       view = false,
       writable = true,
       unbatch = 0,
-      autoUpdate = false,
+      autoUpdate = !writable && !view,
       preload = null
-    } = options
+    } = opts
 
     this.store = store
     this.root = root
@@ -289,3 +299,8 @@ class Hyperbee extends EventEmitter {
 module.exports = Hyperbee
 
 function noop() {}
+
+function toEncryptionProvider(encryption) {
+  if (encryption) return (key) => encryption
+  return () => null
+}
