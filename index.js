@@ -109,7 +109,7 @@ class Hyperbee extends EventEmitter {
   move({ length = this.core.length, key = null, writable = this.writable } = {}) {
     this.context = key ? this.context.getContextByKey(key) : this.context
     this.writable = writable
-    this._setRoot(this._nodeAtSeq(length - 1))
+    this._setRoot(this._nodeAtSeq(length - 1), true)
   }
 
   snapshot() {
@@ -129,7 +129,7 @@ class Hyperbee extends EventEmitter {
     return this._nodeAtSeq(this.context.core.length - 1)
   }
 
-  _nodeAtSeq(seq = this.context.core.length - 1) {
+  _nodeAtSeq(seq) {
     return seq < 0 ? EMPTY : this.context.createTreeNode(0, seq, 0, false, null)
   }
 
@@ -141,7 +141,7 @@ class Hyperbee extends EventEmitter {
 
     this._setRoot(this._lastNodeInCore(), false)
     if (this.autoUpdate) {
-      this.core.on('append', () => this._setRoot(this._lastNodeInCore()))
+      this.core.on('append', () => this._setRoot(this._lastNodeInCore(), true))
     }
 
     this.emit('ready')
@@ -293,11 +293,11 @@ class Hyperbee extends EventEmitter {
 
     if (expected === this.unbatch) {
       this.context = context
-      this._setRoot(this._nodeAtSeq(length - 1))
+      this._setRoot(this._nodeAtSeq(length - 1), true)
     }
   }
 
-  _setRoot(root, emit = true) {
+  _setRoot(root, emit) {
     if (!root.equivalentTo(this.root)) {
       this.root = root
       if (emit) this.emit('update')
