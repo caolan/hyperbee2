@@ -12,6 +12,7 @@ const { Pointer, KeyPointer, ValuePointer, TreeNode, EMPTY } = require('./lib/tr
 const { DeltaOp, DeltaCohort, OP_COHORT } = require('./lib/compression.js')
 
 class Hyperbee extends EventEmitter {
+
   constructor(store, opts = {}) {
     super()
 
@@ -44,6 +45,8 @@ class Hyperbee extends EventEmitter {
       preload = null
     } = opts
 
+    this.gets_in_progress = 0;
+
     this.store = store
     this.root = root
     this.context = context
@@ -55,6 +58,7 @@ class Hyperbee extends EventEmitter {
     this.autoUpdate = autoUpdate
     this.preload = preload
 
+    // TODO: remove this and force explictly awaited ready() calls?
     this.ready().catch(noop)
   }
 
@@ -209,27 +213,34 @@ class Hyperbee extends EventEmitter {
       return ptr.value
     }
 
-    const [block, context] = await Promise.all([
-      ptr.context.getBlock(ptr.seq, ptr.core, config),
-      ptr.context.getContext(ptr.core, config)
-    ])
+    // const [block, context] = await Promise.all([
+    //   ptr.context.getBlock(ptr.seq, ptr.core, config),
+    //   ptr.context.getContext(ptr.core, config)
+    // ])
+    const block = await ptr.context.getBlock(ptr.seq, ptr.core, config);
+    const context = await ptr.context.getContext(ptr.core, config);
 
     const tree = block.tree[ptr.offset]
 
-    const keys = new Array(tree.keys.length)
-    const children = new Array(tree.children.length)
+    const k = new Array(tree.keys.length);
+    const c = new Array(tree.children.length);
 
-    for (let i = 0; i < keys.length; i++) {
+    // const keys = new Array(tree.keys.length)
+    // const children = new Array(tree.children.length)
+
+    for (let i = 0; i < k.length; i++) {
       const d = tree.keys[i]
-      keys[i] = inflateKey(context, d, ptr, block, config)
+      // keys[i] = inflateKey(context, d, ptr, block, config)
+      k[i] = await inflateKey(context, d, ptr, block, config)
     }
 
-    for (let i = 0; i < children.length; i++) {
+    for (let i = 0; i < c.length; i++) {
       const d = tree.children[i]
-      children[i] = inflateChild(context, d, ptr, block, config)
+      // children[i] = inflateChild(context, d, ptr, block, config)
+      c[i] = await inflateChild(context, d, ptr, block, config)
     }
 
-    const [k, c] = await Promise.all([Promise.all(keys), Promise.all(children)])
+    // const [k, c] = await Promise.all([Promise.all(keys), Promise.all(children)])
 
     const value = new TreeNode(k, c)
     if (!ptr.value) ptr.value = value
@@ -262,11 +273,15 @@ class Hyperbee extends EventEmitter {
       return block.values[ptr.offset]
     }
 
-    const blockPromises = new Array(ptr.split + 1)
-    for (let i = 0; i < blockPromises.length; i++) {
-      blockPromises[i] = ptr.context.getBlock(ptr.seq - ptr.split + i, ptr.core, config)
+    const blocks = new Array(ptr.split + 1);
+    for (let i = 0; i < blocks.length; i++) {
+      blocks[i] = await ptr.context.getBlock(ptr.seq - ptr.split + i, ptr.core, config)
     }
-    const blocks = await Promise.all(blockPromises)
+    // const blockPromises = new Array(ptr.split + 1)
+    // for (let i = 0; i < blockPromises.length; i++) {
+    //   blockPromises[i] = ptr.context.getBlock(ptr.seq - ptr.split + i, ptr.core, config)
+    // }
+    // const blocks = await Promise.all(blockPromises)
     const splitValue = new Array(blockPromises.length)
     for (let i = 0; i < splitValue.length - 1; i++) {
       splitValue[i] = blocks[i].values[0]
@@ -317,12 +332,18 @@ class Hyperbee extends EventEmitter {
   }
 
   async get(key, opts) {
+      this.gets_in_progress++;
+      console.log('gets in progress', this.gets_in_progress);
+      const r = await (async () => {
+      // console.log('GET', key);
     const config = this.config.options(opts)
 
     let ptr = await this.bootstrap(config)
     if (!ptr) return null
 
+    // console.log('---', key);
     while (true) {
+      // console.log('while loop', ptr.seq);
       const v = ptr.value ? this.bump(ptr) : await this.inflate(ptr, config)
 
       let s = 0
@@ -345,7 +366,12 @@ class Hyperbee extends EventEmitter {
 
       const i = c < 0 ? e : s
       ptr = v.children.get(i)
+      // console.log('while loop, children get', i);
     }
+  })();
+      this.gets_in_progress--;
+      console.log('gets in progress', this.gets_in_progress);
+      return r;
   }
 }
 
@@ -354,6 +380,8 @@ module.exports = Hyperbee
 function noop() {}
 
 function inflateKey(context, d, ptr, block, config) {
+    // console.log('inflateKey', ptr.seq, (ptr.seq >= 208) && new Error().stack);
+    // console.log('inflateKey', ptr.seq);
   if (d.type === OP_COHORT) return inflateKeyCohort(context, d, ptr, block, config)
   return inflateKeyDelta(context, d, ptr, block, config)
 }
@@ -391,16 +419,19 @@ async function inflateKeyCohort(context, d, ptr, block, config) {
       : await context.getBlock(co.seq, co.core, config)
 
   const cohort = blk.cohorts[co.offset]
-  const promises = new Array(cohort.length)
+  // const promises = new Array(cohort.length)
+  const deltas = new Array(cohort.length)
 
   for (let i = 0; i < cohort.length; i++) {
     const p = cohort[i]
-    const k = inflateKeyDelta(context, p, co, blk, config)
-    promises[i] = k
+    // const k = inflateKeyDelta(context, p, co, blk, config)
+    // promises[i] = k
+    deltas[i] = await inflateKeyDelta(context, p, co, blk, config);
   }
 
   const p = new Pointer(context, co.core, co.seq, co.offset)
-  return new DeltaCohort(false, p, await Promise.all(promises))
+  // return new DeltaCohort(false, p, await Promise.all(promises))
+  return new DeltaCohort(false, p, deltas)
 }
 
 async function inflateChild(context, d, ptr, block, config) {
