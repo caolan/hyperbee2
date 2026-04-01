@@ -136,6 +136,11 @@ class Hyperbee extends EventEmitter {
     return new WriteBatch(this, opts)
   }
 
+  update(root = null) {
+    if (root === null) root = this._lastNodeInCore()
+    this._setRoot(root, true)
+  }
+
   _lastNodeInCore() {
     return this._nodeAtSeq(this.context.core.length - 1)
   }
@@ -152,7 +157,7 @@ class Hyperbee extends EventEmitter {
 
     this._setRoot(this._lastNodeInCore(), false)
     if (this.autoUpdate) {
-      this.core.on('append', () => this._setRoot(this._lastNodeInCore(), true))
+      this.core.on('append', this.update.bind(this, null))
     }
 
     this.emit('ready')
@@ -256,7 +261,7 @@ class Hyperbee extends EventEmitter {
   }
 
   _setRoot(root, emit) {
-    if (!root.equivalentTo(this.root)) {
+    if (root === null || !root.equivalentTo(this.root)) {
       this.root = root
       if (emit) this.emit('update')
     }
