@@ -341,16 +341,11 @@ class Hyperbee extends EventEmitter {
   }
 
   // Using this as an example of map/reduce
-  async count(opts) {
-    const config = this.config.options(opts)
-    const ptr = await this.bootstrap(config)
-    if (!ptr) return null
-    const c = await this._count(ptr, config)
-    return c
+  async count() {
+    return await this._count(this.root)
   }
 
-  // TODO: avoid recursion?
-  async _count(ptr, config) {
+  async countRange(start, end, ptr = this.root) {
     const reduce = (values, _rereduce) => {
       let count = 0
       for (const v of values) count += v
@@ -358,7 +353,72 @@ class Hyperbee extends EventEmitter {
     }
     const map = (_row) => 1
 
-    const v = ptr.value ? this.bump(ptr) : await this.inflate(ptr, config)
+    const node = ptr.value ? this.bump(ptr) : await this.inflate(ptr, this.config)
+
+    const current = []
+    const subtrees = []
+
+    let i = 0
+    // Skip keys outside of range
+    while (i < node.keys.length) {
+      const data = node.keys.get(i)
+      if (b4a.compare(data.key, start) >= 0) break
+      i++
+    }
+    // Process keys until end or last key reached
+    while (i < node.keys.length) {
+      const data = node.keys.get(i)
+      if (b4a.compare(data.key, end) >= 0) break
+      current.push(map(data))
+      i++
+    }
+    if (current.length) {
+      subtrees.push(reduce(current, false))
+    }
+
+    if (node.children.length) {
+      outer: while (true) {
+        let first = 0
+        // Skip children outside of range
+        while (first < node.keys.length) {
+          const data = node.keys.get(first)
+          if (b4a.compare(data.key, start) > 0) break
+          first++
+        }
+        // Process children until end or last key reached
+        let i = first
+        while (i < node.keys.length) {
+          const data = node.keys.get(i)
+          const isLast = b4a.compare(data.key, end) >= 0
+          if (i === first || isLast) {
+            subtrees.push(await this.countRange(start, end, node.children.get(i)))
+          } else {
+            subtrees.push(await this._count(node.children.get(i)))
+          }
+          if (isLast) {
+            // This was the last child to process
+            break outer
+          }
+          i++
+        }
+        // Process last child if not exited outer loop early
+        subtrees.push(await this.countRange(start, end, node.children.get(i)))
+      }
+    }
+
+    return reduce(subtrees, true)
+  }
+
+  // TODO: avoid recursion?
+  async _count(ptr) {
+    const reduce = (values, _rereduce) => {
+      let count = 0
+      for (const v of values) count += v
+      return count
+    }
+    const map = (_row) => 1
+
+    const v = ptr.value ? this.bump(ptr) : await this.inflate(ptr, this.config)
 
     // already calculated?
     if (v.count !== undefined) return v.count
@@ -372,7 +432,7 @@ class Hyperbee extends EventEmitter {
     }
     for (let i = 0, len = v.children.length; i < len; i++) {
       const c = v.children.get(i)
-      subtrees.push(await this._count(c, config))
+      subtrees.push(await this._count(c, this.config))
     }
     if (current.length) {
       subtrees.push(reduce(current, false))
