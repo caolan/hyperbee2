@@ -8,7 +8,7 @@ const b = new Hyperbee(new Corestore('./sandbox/reduce'), {
   reduce(emit, key, values, rereduce) {
     let total = 0
     for (const count of values) total += count
-    emit('count', count)
+    emit('count', total)
   }
 })
 
@@ -23,7 +23,9 @@ function makeKey(i) {
   return Buffer.from(i.toString(16).padStart(MAX_KEY_LEN, '0'))
 }
 
-if (b.core.length === 0) {
+const DO_WRITE = b.core.length === 0
+
+if (DO_WRITE) {
   const w = b.write()
 
   for (let i = 0; i < TOTAL; i++) {
@@ -37,15 +39,29 @@ if (b.core.length === 0) {
 // Calculate count without range
 // console.log(await b.count())
 
-let start = makeKey(123)
-let end = makeKey(10000)
+const start = makeKey(123)
+const end = makeKey(10000)
 
 async function timeIt(f) {
-  let t = performance.now()
-  console.log(await b.countRange(start, end))
+  const t = performance.now()
+  console.log(await f())
   console.log('Elapsed:', (performance.now() - t).toFixed(3), 'ms')
 }
 
 // Second calculation should be noticeably faster due to caching
 await timeIt(async () => await b.countRange(start, end))
 await timeIt(async () => await b.countRange(start, end))
+
+if (DO_WRITE) {
+  const w = b.write()
+
+  for (let i = TOTAL; i < TOTAL + 1000; i++) {
+    const k = makeKey(i)
+    w.tryPut(k, k)
+  }
+
+  await w.flush()
+}
+
+// Should be 101000
+console.log(await b.count())

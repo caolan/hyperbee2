@@ -223,7 +223,7 @@ class Hyperbee extends EventEmitter {
 
     const [k, c] = await Promise.all([Promise.all(keys), Promise.all(children)])
 
-    const value = new TreeNode(k, c)
+    const value = new TreeNode(k, c, tree.count)
     if (!ptr.value) ptr.value = value
 
     this.bump(ptr)
@@ -342,7 +342,10 @@ class Hyperbee extends EventEmitter {
 
   // Using this as an example of map/reduce
   async count() {
-    return await this._count(this.root)
+    const count = await this._count(this.root)
+    const batch = this.write()
+    await batch.flush(true)
+    return count
   }
 
   async countRange(start, end, ptr = this.root) {
@@ -376,6 +379,7 @@ class Hyperbee extends EventEmitter {
       subtrees.push(reduce(current, false))
     }
 
+    let changed = false
     if (node.children.length) {
       outer: while (true) {
         let first = 0
@@ -394,6 +398,7 @@ class Hyperbee extends EventEmitter {
             subtrees.push(await this.countRange(start, end, node.children.get(i)))
           } else {
             subtrees.push(await this._count(node.children.get(i)))
+            changed = changed || node.changed
           }
           if (isLast) {
             // This was the last child to process
@@ -440,6 +445,8 @@ class Hyperbee extends EventEmitter {
 
     // store result for future recalculations
     v.count = reduce(subtrees, true)
+    // write result
+    v.changed = true
     return v.count
   }
 }
