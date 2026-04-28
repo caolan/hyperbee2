@@ -303,6 +303,52 @@ class Hyperbee extends EventEmitter {
       ptr = v.children.get(i)
     }
   }
+
+  async reduce(name, reduce) {
+    return await this._reduce(this.root, name, reduce)
+  }
+
+  // TODO: avoid recursion?
+  // TODO: this shares a lot of structure with _materializeReducer in write.js,
+  // see if logic can be shared.
+  async _reduce(ptr, name, reduce) {
+    // Already calculated?
+    const existing = ptr.reducers?.[name]
+    if (existing !== null && existing !== undefined) {
+      return existing
+    }
+
+    const v = ptr.value ? this.bump(ptr) : await this.inflate(ptr, this.config)
+
+    // Values stored at this node
+    const values = []
+    for (let i = 0, len = v.keys.length; i < len; i++) {
+      const k = v.keys.get(i)
+      // TODO: test valuePointer?
+      values.push(k.value)
+    }
+
+    // Store results to combine later
+    const rereduce = [reduce(values, false)]
+
+    // Results for child nodes
+    for (let i = 0, len = v.children.length; i < len; i++) {
+      const c = v.children.get(i)
+      // TODO: avoid recursion?
+      rereduce.push(await this._reduce(c, name, reduce))
+    }
+
+    // Re-reduce if necessary (because this is not a leaf node)
+    const result = rereduce.length > 1 ? reduce(rereduce, true) : rereduce[0]
+
+    // Store result on node
+    if (!v.reducers) v.reducers = {}
+    v.reducers[name] = result
+    ptr.changed = true
+
+    // return result for this (sub)tree
+    return result
+  }
 }
 
 module.exports = Hyperbee
