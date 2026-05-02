@@ -169,10 +169,7 @@ class Hyperbee extends EventEmitter {
 
   async close() {
     if (!this.root) await this.ready()
-    if (this.config.activeRequests.length && this.config.activeRequests[0] !== null) {
-      Hypercore.clearRequests(this.config.activeRequests, null)
-      this.config.activeRequests.push(null) // mark as dead
-    }
+    Hypercore.destroyRequests(this.config.activeRequests, null)
     if (this.view) return
     if (this.store.closing) return this.store.close()
     await this.store.close()
